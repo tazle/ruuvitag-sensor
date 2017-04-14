@@ -3,7 +3,7 @@ import subprocess
 import sys
 import os
 
-from ruuvitag_sensor.common import BleConfig
+from ruuvitag_sensor.common import Config
 
 # Eddystone Protocol specification
 # https://github.com/google/eddystone/blob/master/protocol-specification.md
@@ -18,12 +18,12 @@ class BleCommunication(object):
 
     @staticmethod
     @abc.abstractmethod
-    def get_data(mac, ble_config=BleConfig()):
+    def get_data(mac, config=Config()):
         pass
 
     @staticmethod
     @abc.abstractmethod
-    def get_datas(ble_config=BleConfig()):
+    def get_datas(config=Config()):
         pass
 
 
@@ -31,11 +31,11 @@ class BleCommunicationDummy(BleCommunication):
     '''TODO: Find some working BLE implementation for Windows and OSX'''
 
     @staticmethod
-    def get_data(mac, ble_config=BleConfig()):
+    def get_data(mac, config=Config()):
         return '1E0201060303AAFE1616AAFE10EE037275752E76692F23416A7759414D4663CD'
 
     @staticmethod
-    def get_datas(ble_config=BleConfig()):
+    def get_datas(config=Config()):
         datas = [
             ('BC:2C:6A:1E:59:3D', '1E0201060303AAFE1616AAFE10EE037275752E76692F23416A7759414D4663CD'),
             ('AA:2C:6A:1E:59:3D', '1E0201060303AAFE1616AAFE10EE037275752E76692F23416A7759414D4663CD')
@@ -49,11 +49,11 @@ class BleCommunicationNix(BleCommunication):
     '''Bluetooth LE communication for Linux'''
 
     @staticmethod
-    def start(ble_config=BleConfig()):
-        print('Start receiving broadcasts (device %s)' % ble_config.device)
+    def start(config=Config()):
+        print('Start receiving broadcasts (device %s)' % config.device)
         DEVNULL = subprocess.DEVNULL if sys.version_info >= (3, 3) else open(os.devnull, 'wb')
 
-        subprocess.call('sudo hciconfig %s reset' % ble_config.device, shell=True, stdout=DEVNULL)
+        subprocess.call('sudo hciconfig %s reset' % config.device, shell=True, stdout=DEVNULL)
         hcitool = subprocess.Popen(['sudo', '-n', 'hcitool', 'lescan', '--duplicates'], stdout=DEVNULL)
         hcidump = subprocess.Popen(['sudo', '-n', 'hcidump', '--raw'], stdout=subprocess.PIPE)
         return (hcitool, hcidump)
@@ -100,8 +100,8 @@ class BleCommunicationNix(BleCommunication):
             return
 
     @staticmethod
-    def get_datas(ble_config=BleConfig()):
-        procs = BleCommunicationNix.start(ble_config)
+    def get_datas(config=Config()):
+        procs = BleCommunicationNix.start(config)
 
         data = None
         for line in BleCommunicationNix.get_lines(procs[1]):
@@ -120,9 +120,9 @@ class BleCommunicationNix(BleCommunication):
         BleCommunicationNix.stop(procs[0], procs[1])
 
     @staticmethod
-    def get_data(mac, ble_config=BleConfig()):
+    def get_data(mac, config=Config()):
         data = None
-        data_iter = BleCommunicationNix.get_datas(ble_config)
+        data_iter = BleCommunicationNix.get_datas(config)
         for data in data_iter:
             if mac == data[0]:
                 print('Data found')

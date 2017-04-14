@@ -9,12 +9,12 @@ class RunFlag(object):
     running = True
 
 
-class BleConfig(object):
+class Config(object):
     """
-    Bluetooth configuration parameters
+    Configuration parameters
 
     Attributes:
-        device (bool): BLE device (default hci0)
+        device (string): BLE device (default hci0)
     """
 
     device = 'hci0'

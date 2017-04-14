@@ -4,7 +4,7 @@ import argparse
 import ruuvitag_sensor
 from ruuvi import RuuviTagSensor
 from log import logger  # pylint: disable=E0611
-from common import BleConfig
+from common import Config
 
 
 def my_excepthook(exctype, value, traceback):
@@ -29,21 +29,21 @@ if __name__ == '__main__':
                         version='%(prog)s {}'.format(ruuvitag_sensor.__version__))
     args = parser.parse_args()
 
-    ble_config = BleConfig()
+    config = Config()
 
     if args.ble_device:
-        ble_config.device = args.ble_device
+        config.device = args.ble_device
 
     if args.mac_address:
-        sensor = RuuviTagSensor(args.mac_address, ble_config)
+        sensor = RuuviTagSensor(args.mac_address, config)
         state = sensor.update()
         print(state)
     elif args.find_action:
-        RuuviTagSensor.find_ruuvitags(ble_config)
+        RuuviTagSensor.find_ruuvitags(config)
     elif args.latest_action:
-        datas = RuuviTagSensor.get_data_for_sensors(ble_config)
+        datas = RuuviTagSensor.get_data_for_sensors(config)
         print(datas)
     elif args.stream_action:
-        RuuviTagSensor.get_datas(lambda x: print('%s - %s' % (x[0], x[1]), ble_config=ble_config))
+        RuuviTagSensor.get_datas(lambda x: print('%s - %s' % (x[0], x[1]), config=config))
     else:
         parser.print_usage()
