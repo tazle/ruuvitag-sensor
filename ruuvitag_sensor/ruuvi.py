@@ -4,6 +4,7 @@ import os
 import time
 
 from ruuvitag_sensor.url_decoder import UrlDecoder
+from ruuvitag_sensor.common import RunFlag, BleConfig
 
 mac_regex = '[0-9a-f]{2}([:])[0-9a-f]{2}(\\1[0-9a-f]{2}){4}$'
 
@@ -16,22 +17,11 @@ else:
     ble = BleCommunicationNix()
 
 
-class RunFlag(object):
-    """
-    Wrapper for boolean run flag
-
-    Attributes:
-        running (bool): Defines if function should continue execution
-    """
-
-    running = True
-
-
 # TODO: Split this class to common functions and RuuviTagSensor
 
 class RuuviTagSensor(object):
 
-    def __init__(self, mac):
+    def __init__(self, mac, ble_config=BleConfig()):
 
         if not re.match(mac_regex, mac.lower()):
             raise ValueError('{} is not valid mac address'.format(mac))
@@ -39,6 +29,7 @@ class RuuviTagSensor(object):
         self._mac = mac
         self._state = {}
         self._data = None
+        self._ble_config = ble_config
 
     @property
     def mac(self):
@@ -49,8 +40,19 @@ class RuuviTagSensor(object):
         return self._state
 
     @staticmethod
-    def get_data(mac):
-        raw = ble.get_data(mac)
+    def get_data(mac, ble_config=BleConfig()):
+        """
+        Get data for single sensor.
+
+        Args:
+            mac (string): MAC address of sensor
+            ble_config (object): BleConfig object. Optional configuration for BLE (default device hci0).
+
+        Returns:
+            dict: state of found sensor
+        """
+
+        raw = ble.get_data(mac, ble_config)
         return RuuviTagSensor.convert_data(raw)
 
     @staticmethod
@@ -83,10 +85,13 @@ class RuuviTagSensor(object):
             return None
 
     @staticmethod
-    def find_ruuvitags():
+    def find_ruuvitags(ble_config=BleConfig()):
         """
         Find all RuuviTags. Function will print the mac and the state of the sensors when found.
         Function will execute as long as it is stopped. Stop ecexution with Crtl+C.
+
+        Args:
+            ble_config (object): BleConfig object. Optional configuration for BLE (default device hci0).
 
         Returns:
             dict: MAC and state of found sensors
@@ -96,7 +101,7 @@ class RuuviTagSensor(object):
 
         datas = dict()
 
-        for new_data in RuuviTagSensor._get_ruuvitag_datas():
+        for new_data in RuuviTagSensor._get_ruuvitag_datas(ble_config=ble_config):
             if new_data[0] in datas:
                 continue
             datas[new_data[0]] = new_data[1]
@@ -106,13 +111,15 @@ class RuuviTagSensor(object):
         return datas
 
     @staticmethod
-    def get_data_for_sensors(macs=[], search_duratio_sec=5):
+    def get_data_for_sensors(macs=[], search_duratio_sec=5, ble_config=BleConfig()):
         """
         Get lates data for sensors in the MAC's list.
 
         Args:
             macs (array): MAC addresses
             search_duratio_sec (int): Search duration in seconds. Default 5.
+            ble_config (object): BleConfig object. Optional configuration for BLE (default device hci0).
+
         Returns:
             dict: MAC and state of found sensors
         """
@@ -123,13 +130,13 @@ class RuuviTagSensor(object):
 
         datas = dict()
 
-        for new_data in RuuviTagSensor._get_ruuvitag_datas(macs, search_duratio_sec):
+        for new_data in RuuviTagSensor._get_ruuvitag_datas(macs, search_duratio_sec, ble_config=ble_config):
             datas[new_data[0]] = new_data[1]
 
         return datas
 
     @staticmethod
-    def get_datas(callback, macs=[], run_flag=RunFlag()):
+    def get_datas(callback, macs=[], run_flag=RunFlag(), ble_config=BleConfig()):
         """
         Get data for all ruuvitag sensors or sensors in the MAC's list.
 
@@ -137,12 +144,13 @@ class RuuviTagSensor(object):
             callback (func): callback funcion to be called when new data is received
             macs (list): MAC addresses
             run_flag (object): RunFlag object. Function executes while run_flag.running
+            ble_config (object): BleConfig object. Optional configuration for BLE (default device hci0)
         """
 
         print('Get latest data for sensors. Stop with Ctrl+C.')
         print('MACs: {}'.format(macs))
 
-        for new_data in RuuviTagSensor._get_ruuvitag_datas(macs, None, run_flag):
+        for new_data in RuuviTagSensor._get_ruuvitag_datas(macs, None, run_flag, ble_config):
             callback(new_data)
 
     def update(self):
@@ -153,7 +161,7 @@ class RuuviTagSensor(object):
             dict: Latest state
         """
 
-        data = RuuviTagSensor.get_data(self._mac)
+        data = RuuviTagSensor.get_data(self._mac, self._ble_config)
 
         if data == self._data:
             return self._state
@@ -168,7 +176,7 @@ class RuuviTagSensor(object):
         return self._state
 
     @staticmethod
-    def _get_ruuvitag_datas(macs=[], search_duratio_sec=None, run_flag=RunFlag()):
+    def _get_ruuvitag_datas(macs=[], search_duratio_sec=None, run_flag=RunFlag(), ble_config=BleConfig()):
         """
         Get data from BluetoothCommunication and handle data encoding.
 
@@ -176,13 +184,14 @@ class RuuviTagSensor(object):
             macs (list): MAC addresses. Default empty list.
             search_duratio_sec (int): Search duration in seconds. Default None.
             run_flag (object): RunFlag object. Function executes while run_flag.running. Default new RunFlag.
+            ble_config (object): BleConfig object. Optional configuration for BLE (default device hci0).
 
         Yields:
             tuple: MAC and State of RuuviTag sensor data
         """
 
         start_time = time.time()
-        data_iter = ble.get_datas()
+        data_iter = ble.get_datas(ble_config)
 
         for ble_data in data_iter:
             # Check duration

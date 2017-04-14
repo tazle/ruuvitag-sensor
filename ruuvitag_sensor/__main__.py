@@ -4,6 +4,7 @@ import argparse
 import ruuvitag_sensor
 from ruuvi import RuuviTagSensor
 from log import logger  # pylint: disable=E0611
+from common import BleConfig
 
 
 def my_excepthook(exctype, value, traceback):
@@ -23,20 +24,26 @@ if __name__ == '__main__':
                         dest='latest_action', help='Get latest data for found RuuviTags')
     parser.add_argument('-s', '--stream', action='store_true',
                         dest='stream_action', help='Stream broadcasts from all RuuviTags')
+    parser.add_argument('-d', '--device', dest='ble_device', help='Set BLE device (default hci0)')
     parser.add_argument('--version', action='version',
                         version='%(prog)s {}'.format(ruuvitag_sensor.__version__))
     args = parser.parse_args()
 
+    ble_config = BleConfig()
+
+    if args.ble_device:
+        ble_config.device = args.ble_device
+
     if args.mac_address:
-        sensor = RuuviTagSensor(args.mac_address)
+        sensor = RuuviTagSensor(args.mac_address, ble_config)
         state = sensor.update()
         print(state)
     elif args.find_action:
-        RuuviTagSensor.find_ruuvitags()
+        RuuviTagSensor.find_ruuvitags(ble_config)
     elif args.latest_action:
-        datas = RuuviTagSensor.get_data_for_sensors()
+        datas = RuuviTagSensor.get_data_for_sensors(ble_config)
         print(datas)
     elif args.stream_action:
-        RuuviTagSensor.get_datas(lambda x: print('%s - %s' % (x[0], x[1])))
+        RuuviTagSensor.get_datas(lambda x: print('%s - %s' % (x[0], x[1]), ble_config=ble_config))
     else:
         parser.print_usage()

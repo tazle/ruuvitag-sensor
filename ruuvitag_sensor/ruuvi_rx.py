@@ -5,7 +5,8 @@ import time
 from concurrent.futures import ProcessPoolExecutor
 from rx.subjects import Subject
 
-from ruuvitag_sensor.ruuvi import RuuviTagSensor, RunFlag
+from ruuvitag_sensor.ruuvi import RuuviTagSensor
+from ruuvitag_sensor.common import RunFlag, BleConfig
 
 
 class RuuviTagReactive(object):
@@ -14,7 +15,7 @@ class RuuviTagReactive(object):
     """
 
     @staticmethod
-    def _run_get_data_background(macs, queue, run_flag):
+    def _run_get_data_background(macs, queue, run_flag, ble_config):
         """
         Background process from RuuviTag Sensors
         """
@@ -23,7 +24,7 @@ class RuuviTagReactive(object):
             data[1]['time'] = str(datetime.now())
             queue.put(data)
 
-        RuuviTagSensor.get_datas(add_data, macs, run_flag)
+        RuuviTagSensor.get_datas(add_data, macs, run_flag, ble_config)
 
     @staticmethod
     def _data_update(subjects, queue, run_flag):
@@ -37,7 +38,7 @@ class RuuviTagReactive(object):
                     s.on_next(data)
             time.sleep(0.1)
 
-    def __init__(self, macs=[]):
+    def __init__(self, macs=[], ble_config=BleConfig()):
         """
         Start background process for get_datas and async task for notifying all subscribed observers
 
@@ -47,6 +48,7 @@ class RuuviTagReactive(object):
 
         self.subjects = []
         self.run_flag = RunFlag()
+        self.ble_config = ble_config
 
         m = Manager()
         q = m.Queue()
@@ -57,7 +59,7 @@ class RuuviTagReactive(object):
 
         # Start background process
         executor = ProcessPoolExecutor(1)
-        executor.submit(RuuviTagReactive._run_get_data_background, macs, q, self.run_flag)
+        executor.submit(RuuviTagReactive._run_get_data_background, macs, q, self.run_flag, self.ble_config)
 
     def get_subject(self):
         """
