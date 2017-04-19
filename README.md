@@ -180,12 +180,29 @@ Example data has data from 2 sensors. First sensor has firmware that supports Da
 }
 ```
 
+##### Using different Bleutooth device
+
+If you have multiple Bluetooth devices installed, device to be used might not be the default hci0. Device can be passed with `Config` object.
+
+```python
+config = Config()
+config.device = 'hci1'
+
+sensor = RuuviTagSensor('F4:A5:74:89:16:57', config)
+
+RuuviTagSensor.find_ruuvitags(config)
+
+datas = RuuviTagSensor.get_data_for_sensors(config)
+
+RuuviTagSensor.get_datas(lambda x: print('%s - %s' % (x[0], x[1]), config=config))
+```
+
 ##### Command line
 
 ```
 $ python ruuvitag_sensor -h
 
-usage: ruuvitag_sensor [-h] [-g MAC_ADDRESS] [-f] [-l] [-s] [--version]
+usage: ruuvitag_sensor [-h] [-g MAC_ADDRESS] [-f] [-l] [-s] [-d BLE_DEVICE] [--version]
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -194,6 +211,8 @@ optional arguments:
   -f, --find            Find broadcasting RuuviTags
   -l, --latest          Get latest data for found RuuviTags
   -s, --stream          Stream broadcasts from all RuuviTags
+  -d BLE_DEVICE, --device BLE_DEVICE
+                        Set BLE device (default hci0)
   --version             show program's version number and exit
 ```
 
